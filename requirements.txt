@@ -1,1 +1,3 @@
 kagglehub
+requests
+BeautifulSoup4

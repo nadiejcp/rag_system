@@ -7,4 +7,5 @@ data:
   path_to_save: data/web_scrap
   url_to_scrap: https://subslikescript.com/movies
   start_page: 1
-  end_page: 20
+  end_page: 5
+  database_name: data/movies.db

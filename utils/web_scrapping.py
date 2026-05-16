@@ -1,344 +1,166 @@
-from __future__ import annotations
-
-import json
-from html.parser import HTMLParser
-from pathlib import Path
-from typing import Dict, List, Optional
+import sqlite3
+import requests
+from bs4 import BeautifulSoup
 from urllib.parse import urljoin
-from urllib.request import Request, urlopen
-import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
-class ArticleLinkParser(HTMLParser):
-	"""Extract <a> links inside a target <article class="..."> block."""
-
-	def __init__(self, article_class: str, href_contains: Optional[str] = None) -> None:
-		super().__init__(convert_charrefs=True)
-		self.article_class = article_class
-		self.href_contains = href_contains
-
-		self._article_depth = 0
-		self._inside_target_article = False
-
-		self._inside_link = False
-		self._current_href: Optional[str] = None
-		self._current_title: Optional[str] = None
-		self._current_text_parts: List[str] = []
-
-		self.links: List[Dict[str, str]] = []
-
-	@staticmethod
-	def _class_contains(attrs: Dict[str, str], expected_class: str) -> bool:
-		class_value = attrs.get("class", "")
-		classes = class_value.split()
-		return expected_class in classes
-
-	def handle_starttag(self, tag: str, attrs_list: List[tuple[str, Optional[str]]]) -> None:
-		attrs = {k: (v or "") for k, v in attrs_list}
-
-		if tag == "article" and self._class_contains(attrs, self.article_class):
-			self._inside_target_article = True
-			self._article_depth = 1
-			return
-
-		if self._inside_target_article and tag == "article":
-			self._article_depth += 1
-
-		if not self._inside_target_article:
-			return
-
-		if tag == "a":
-			href = attrs.get("href", "").strip()
-			if not href:
-				return
-			if self.href_contains and self.href_contains not in href:
-				return
-
-			self._inside_link = True
-			self._current_href = href
-			self._current_title = attrs.get("title", "").strip()
-			self._current_text_parts = []
-
-	def handle_data(self, data: str) -> None:
-		if self._inside_link:
-			self._current_text_parts.append(data)
-
-	def handle_endtag(self, tag: str) -> None:
-		if self._inside_target_article and tag == "article":
-			self._article_depth -= 1
-			if self._article_depth <= 0:
-				self._inside_target_article = False
-				self._article_depth = 0
-
-		if tag == "a" and self._inside_link:
-			text = " ".join(part.strip() for part in self._current_text_parts if part.strip())
-			self.links.append(
-				{
-					"href": self._current_href or "",
-					"title": self._current_title or "",
-					"text": text,
-				}
-			)
-			self._inside_link = False
-			self._current_href = None
-			self._current_title = None
-			self._current_text_parts = []
-
-
-class MoviePageParser(HTMLParser):
-	"""Extract title, plot and cue lines from a movie page article."""
-
-	def __init__(self, article_class: str = "main-article") -> None:
-		super().__init__(convert_charrefs=True)
-		self.article_class = article_class
-
-		self._inside_target_article = False
-		self._article_depth = 0
-
-		self._inside_h1 = False
-		self._inside_plot = False
-		self._inside_cue_line = False
-
-		self._inside_full_script = False
-		self._full_script_depth = 0
-
-		self._title_parts: List[str] = []
-		self._plot_parts: List[str] = []
-		self._cue_parts: List[str] = []
-
-		self.title = ""
-		self.plot = ""
-		self.cue_lines: List[str] = []
-
-	@staticmethod
-	def _class_contains(attrs: Dict[str, str], expected_class: str) -> bool:
-		class_value = attrs.get("class", "")
-		return expected_class in class_value.split()
-
-	def handle_starttag(self, tag: str, attrs_list: List[tuple[str, Optional[str]]]) -> None:
-		attrs = {k: (v or "") for k, v in attrs_list}
-
-		if tag == "article" and self._class_contains(attrs, self.article_class):
-			self._inside_target_article = True
-			self._article_depth = 1
-			return
-
-		if not self._inside_target_article:
-			return
-
-		if tag == "article":
-			self._article_depth += 1
-
-		if tag == "h1":
-			self._inside_h1 = True
-
-		if tag == "p" and self._class_contains(attrs, "plot"):
-			self._inside_plot = True
-
-		if tag == "div" and self._class_contains(attrs, "full-script"):
-			self._inside_full_script = True
-			self._full_script_depth = 1
-		elif self._inside_full_script and tag == "div":
-			self._full_script_depth += 1
-
-		if tag == "p" and self._inside_full_script and self._class_contains(attrs, "cue-line"):
-			self._inside_cue_line = True
-			self._cue_parts = []
-
-	def handle_data(self, data: str) -> None:
-		text = data.strip()
-		if not text:
-			return
-
-		if self._inside_h1:
-			self._title_parts.append(text)
-
-		if self._inside_plot:
-			self._plot_parts.append(text)
-
-		if self._inside_cue_line:
-			self._cue_parts.append(text)
-
-	def handle_endtag(self, tag: str) -> None:
-		if self._inside_target_article and tag == "article":
-			self._article_depth -= 1
-			if self._article_depth <= 0:
-				self._inside_target_article = False
-				self._article_depth = 0
-
-		if tag == "h1":
-			self._inside_h1 = False
-
-		if tag == "p" and self._inside_plot:
-			self._inside_plot = False
-
-		if tag == "p" and self._inside_cue_line:
-			line = " ".join(self._cue_parts).strip()
-			if line:
-				self.cue_lines.append(line)
-			self._inside_cue_line = False
-			self._cue_parts = []
-
-		if tag == "div" and self._inside_full_script:
-			self._full_script_depth -= 1
-			if self._full_script_depth <= 0:
-				self._inside_full_script = False
-				self._full_script_depth = 0
-
-	def finalize(self) -> None:
-		self.title = " ".join(self._title_parts).strip()
-		self.plot = " ".join(self._plot_parts).strip()
-
-def fetch_html(url: str, timeout: int = 30) -> str:
-	request = Request(
-		url,
-		headers={
-			"User-Agent": (
-				"Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-				"AppleWebKit/537.36 (KHTML, like Gecko) "
-				"Chrome/124.0.0.0 Safari/537.36"
-			)
-		},
+HEADERS = {
+	"User-Agent": (
+		"Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+		"AppleWebKit/537.36 (KHTML, like Gecko) "
+		"Chrome/124.0.0.0 Safari/537.36"
 	)
-	with urlopen(request, timeout=timeout) as response:
-		return response.read().decode("utf-8", errors="replace")
+}
 
-def extract_links_url(url: str) -> List[Dict[str, str]]:
-	html = fetch_html(url)
-	parser = ArticleLinkParser(article_class='main-article', href_contains='/movie/')
-	parser.feed(html)
+session = requests.Session()
+session.headers.update(HEADERS)
 
-	unique: Dict[str, Dict[str, str]] = {}
-	for item in parser.links:
-		href = item["href"].strip()
-		absolute = urljoin(url, href) if url else href
-		if absolute not in unique:
-			unique[absolute] = {
-				"href": href,
-				"url": absolute,
-				"title": item.get("title", ""),
-				"text": item.get("text", ""),
-			}
-	return list(unique.values())
+class DatabaseManager:
+	def __init__(self, db_name):
+		self.db_name = db_name
+		self.conn = sqlite3.connect(self.db_name)
+		self.cur = self.conn.cursor()
 
-def parse_movie_page(url: str) -> Dict[str, object]:
-	html = fetch_html(url)
-	parser = MoviePageParser(article_class="main-article")
-	parser.feed(html)
-	parser.finalize()
+	def close(self):
+		if self.conn:
+			self.conn.commit()
+			self.conn.close()
 
-	return {
-		"title": parser.title,
-		"plot": parser.plot,
-		"cue_lines": parser.cue_lines,
-		"url": url,
-	}
+	def create_tables(self):
+		self.cur.execute("""
+			CREATE TABLE IF NOT EXISTS movies (
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				name TEXT,
+				description TEXT,
+				url TEXT UNIQUE
+			)
+		""")
+		self.cur.execute("""
+			CREATE TABLE IF NOT EXISTS movies_transcript (
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				movie_id INTEGER,
+				transcript TEXT,
+				FOREIGN KEY(movie_id) REFERENCES movies(id)
+			)
+		""")
+		self.conn.commit()
 
-def safe_filename(name: str) -> str:
-	clean = re.sub(r"[\\/:*?\"<>|]", "_", name).strip()
-	clean = re.sub(r"\s+", " ", clean)
-	return clean[:180] or "untitled_movie"
+	def insert_movie(self, name, description, url, transcript):
+		self.cur.execute("""
+			INSERT OR IGNORE INTO movies (name, description, url) VALUES (?, ?, ?)
+		""", (name, description, url))
+		movie_id = self.cur.lastrowid
+		if movie_id:
+			self.cur.execute("""
+				INSERT INTO movies_transcript (movie_id, transcript) VALUES (?, ?)
+			""", (movie_id, transcript))
+		self.conn.commit()
 
-def write_transcript_file(movie: Dict[str, object], output_dir: Path) -> Path:
-	title = str(movie.get("title", "untitled_movie")).strip() or "untitled_movie"
-	filename = safe_filename(title) + ".txt"
-	path = output_dir / filename
+	def movie_exists(self, url):
+		self.cur.execute("SELECT id FROM movies WHERE url = ?", (url,))
+		return self.cur.fetchone() is not None
 
-	lines = movie.get("cue_lines", [])
-	content_lines = [str(line).strip() for line in lines if str(line).strip()]
-	path.write_text("\n".join(content_lines), encoding="utf-8")
-	return path
+def get_soup(url):
+	r = session.get(url, timeout=30)
+	r.raise_for_status()
+	return BeautifulSoup(r.text, "html.parser")
 
-def append_metadata_file(movie: Dict[str, object], metadata_path: Path) -> None:
-	title = str(movie.get("title", "")).strip()
-	plot = str(movie.get("plot", "")).strip()
-	url = str(movie.get("url", "")).strip()
+def extract_movie_links(base_url, list_page_soup):
+	links = []
+	for a in list_page_soup.select('.scripts-list a[href^="/movie/"]'):
+		href = a.get("href")
+		text = " ".join(a.get_text(" ", strip=True).split())
+		if href:
+			links.append((text, urljoin(base_url, href)))
 
-	block = (
-		f"Title: {title}\n"
-		f"Description: {plot}\n"
-		f"Link: {url}\n"
-		"=" * 80
-		+ "\n"
-	)
-	with metadata_path.open("a", encoding="utf-8") as f:
-		f.write(block)
-
-def load_links_from_json(path: Path) -> List[str]:
-	if not path.exists():
-		raise SystemExit(f"Links JSON file not found: {path}")
-
-	data = json.loads(path.read_text(encoding="utf-8"))
-	urls: List[str] = []
-
-	if isinstance(data, list):
-		for item in data:
-			if isinstance(item, str):
-				urls.append(item.strip())
-			elif isinstance(item, dict):
-				url = str(item.get("url", "")).strip()
-				if url:
-					urls.append(url)
-
-	unique_urls: List[str] = []
 	seen = set()
-	for url in urls:
-		if url and url not in seen:
-			seen.add(url)
-			unique_urls.append(url)
+	clean = []
+	for item in links:
+		if item[1] not in seen:
+			clean.append(item)
+			seen.add(item[1])
+	return clean
 
-	return unique_urls
+def extract_description(soup):
+    selectors = [".description", ".main-article p", "article p", ".mainpage p"]
+    for sel in selectors:
+        el = soup.select_one(sel)
+        if el:
+            txt = " ".join(el.get_text(" ", strip=True).split())
+            if txt:
+                return txt
 
-def collect_links_from_pages(url: str, start_page: int, end_page: int) -> List[str]:
-	all_links: List[str] = []
-	seen = set()
+    meta = soup.select_one('meta[name="description"]')
+    if meta and meta.get("content"):
+        return meta["content"].strip()
 
-	for page in range(start_page, end_page + 1):
-		print(f"Processing list page {page}...")
-		url = f"{url}?page={page}"
-		try:
-			links = extract_links_url(url)
-		except Exception as exc:
-			print(f"Failed page {page}: {exc}")
-			continue
+    return ""
 
-		for item in links:
-			movie_url = str(item.get("url", "")).strip()
-			if movie_url and movie_url not in seen:
-				seen.add(movie_url)
-				all_links.append(movie_url)
+def extract_transcript(soup):
+    selectors = [".full-script", ".script", ".transcript", ".main-article", "article"]
+    for sel in selectors:
+        el = soup.select_one(sel)
+        if el:
+            text = el.get_text("\n", strip=True)
+            if len(text) > 200:
+                return text
+    return ""
 
+def extract_movie_data(movie_url, listing_title=""):
+    soup = get_soup(movie_url)
+
+    title = ""
+    for sel in ["h1", "h2", ".title"]:
+        el = soup.select_one(sel)
+        if el:
+            title = " ".join(el.get_text(" ", strip=True).split())
+            if title:
+                break
+
+    if not title:
+        title = listing_title
+
+    return {
+        "url": movie_url,
+        "name": title,
+        "description": extract_description(soup),
+        "transcript": extract_transcript(soup),
+    }
+
+def scrape_listing_pages(config=None):
+	all_links = []
+	seen_urls = set()
+
+	page_url = config.get('url_to_scrap')
+	start_page = config.get('start_page', 1)
+	end_page = config.get('end_page', None)
+	for page_num in range(start_page, end_page + 1):
+		print(f"Listado {page_num}: {page_url}")
+		soup = get_soup(f'{page_url}?page={page_num}')
+		movie_links = extract_movie_links(page_url, soup)
+		for title, url in movie_links:
+			if url not in seen_urls:
+				all_links.append((title, url))
+				seen_urls.add(url)
 	return all_links
 
-	args = parse_args()
-
-	movies_dir = Path(args.movies_dir)
-	movies_dir.mkdir(parents=True, exist_ok=True)
-
-	metadata_path = Path(args.metadata_file)
-	metadata_path.parent.mkdir(parents=True, exist_ok=True)
-	metadata_path.write_text("", encoding="utf-8")
-
-	if args.collect_links:
-		print("Collecting movie links...")
-		movie_urls = collect_links_from_pages(args.start_page, args.end_page)
-		links_json_path = Path(args.links_json)
-		links_json_path.parent.mkdir(parents=True, exist_ok=True)
-		links_json_path.write_text(json.dumps(movie_urls, indent=2, ensure_ascii=False), encoding="utf-8")
-		print(f"Saved {len(movie_urls)} movie links to {links_json_path}")
-	else:
-		movie_urls = load_links_from_json(Path(args.links_json))
-
-	print(f"Scraping {len(movie_urls)} movie pages...")
-	for idx, movie_url in enumerate(movie_urls, start=1):
-		print(f"[{idx}/{len(movie_urls)}] {movie_url}")
-		try:
-			movie = parse_movie_page(movie_url)
-		except Exception as exc:
-			print(f"Failed: {movie_url} -> {exc}")
-			continue
-
-		transcript_path = write_transcript_file(movie, movies_dir)
-		append_metadata_file(movie, metadata_path)
-		print(f"Saved transcript: {transcript_path.name}")
-
-	print(f"Done. Metadata file: {metadata_path}")
+def scrape_all_movies_parallel(config, max_workers=6):
+    links = scrape_listing_pages(config)
+    print(f"Links únicos encontrados: {len(links)}")
+    database = DatabaseManager(config.get('database_name', 'movies.db'))
+    database.create_tables()
+    filtered_links = [
+        (title, url)
+        for title, url in links
+        if not database.movie_exists(url)
+    ]
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_map = { executor.submit(extract_movie_data, url, title): (title, url) for title, url in filtered_links }
+        for future in as_completed(future_map):
+            title, url = future_map[future]
+            try:
+                row = future.result()
+                database.insert_movie(row['name'], row['description'], row['url'], row['transcript'])
+                print(f"OK: {row['name']}")
+            except Exception as e:
+                print(f"ERROR: {title} | {url} | {e}")
