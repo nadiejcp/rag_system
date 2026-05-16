@@ -1,0 +1,10 @@
+seed: 42
+
+data:
+  path_to_raw: data/raw
+  path_to_processed: data/processed
+  path_to_download: fayaznoor10/movie-transcripts-59k
+  path_to_save: data/web_scrap
+  url_to_scrap: https://subslikescript.com/movies
+  start_page: 1
+  end_page: 20
