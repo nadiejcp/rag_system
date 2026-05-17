@@ -9,3 +9,7 @@ data:
   start_page: 1
   end_page: 4
   database_name: data/movies.db
+
+embedder:
+  model_name: sentence-transformers/all-MiniLM-L6-v2
+  normalize_embeddings: true
