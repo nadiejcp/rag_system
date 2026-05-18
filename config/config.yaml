@@ -9,6 +9,8 @@ data:
   start_page: 1
   end_page: 4
   database_name: data/movies.db
+  raw_table_name: movies
+  embeddings_table_name: movies_embeddings
 
 embedder:
   model_name: sentence-transformers/all-MiniLM-L6-v2
