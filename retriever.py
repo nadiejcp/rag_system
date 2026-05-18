@@ -1,4 +1,4 @@
-from embedder import Embedder
+from embedder import Embedder, cosine
 
 class Retriever:
     def __init__(self, store, embedder: Embedder, k=2):
@@ -11,7 +11,7 @@ class Retriever:
         scored = []
 
         for doc_id, text, vector in self.store.get_all():
-            score = self.embedder.cosine(query_vec, vector)
+            score = cosine(query_vec, vector)
             scored.append((score, text))
 
         scored.sort(reverse=True, key=lambda x: x[0])

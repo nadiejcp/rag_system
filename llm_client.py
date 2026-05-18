@@ -23,7 +23,7 @@ class LLMClient:
         Send a prompt to Ollama and get the response
         """
         try:
-            with httpx.Client() as client:
+            with httpx.Client(timeout=300.0) as client:
                 with client.stream(
                         "POST",
                         self.url,
