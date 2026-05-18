@@ -15,7 +15,7 @@ def main():
   if input('¿Deseas construir la base de datos vectorial? (s/n): ').lower() == 's':
     print('Generando embeddings y almacenando en la base de datos vectorial...')
     build_embeddings(config)
-  
+
   print('Fin del programa')
 
 if __name__ == "__main__":
