@@ -1,3 +1,4 @@
+from pathlib import Path
 import sqlite3
 import requests
 from bs4 import BeautifulSoup
@@ -17,6 +18,8 @@ session.headers.update(HEADERS)
 
 class DatabaseManager:
 	def __init__(self, db_name):
+		db_path = Path(db_name)
+		db_path.parent.mkdir(parents=True, exist_ok=True)
 		self.db_name = db_name
 		self.conn = sqlite3.connect(self.db_name)
 		self.cur = self.conn.cursor()
