@@ -5,7 +5,7 @@ from config.load_config import load_config
 class Embedder:
     def __init__(self, config = load_config().get('embedder')):
         self.config = config
-        self._model = self._load_model(config.model_name)
+        self._model = self._load_model(config.get('model_name'))
 
     @staticmethod
     def _load_model(model_name: str):
@@ -25,7 +25,7 @@ class Embedder:
 
         vector = self._model.encode(
             text,
-            normalize_embeddings=self.config.normalize_embeddings,
+            normalize_embeddings=self.config.get('normalize_embeddings'),
             convert_to_numpy=True,
             show_progress_bar=False,
         )
@@ -39,7 +39,7 @@ class Embedder:
 
         vectors = self._model.encode(
             cleaned,
-            normalize_embeddings=self.config.normalize_embeddings,
+            normalize_embeddings=self.config.get('normalize_embeddings'),
             convert_to_numpy=True,
             show_progress_bar=False,
         )
