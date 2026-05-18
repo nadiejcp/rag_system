@@ -87,10 +87,12 @@ def populate_embeddings(
         count = 0
         for row in movies:
             movie_id = int(row["id"])
+            query = 'SELECT 1 FROM {target_table} WHERE Movie_id = ?'.format(target_table=target_table)
+            if conn.execute(query, (movie_id,)).fetchone():
+                continue  # Skip if embedding already exists
             text = build_embedding_text(row["name"], row["description"])
             if not text:
                 continue
-
             embedding = embedder.embed_text(text)
             upsert_embedding(conn, movie_id, embedding, target_table)
             count += 1
@@ -102,7 +104,7 @@ def populate_embeddings(
 def build_embeddings(config = None) -> None:
     if config is None:
         config = load_config()
-        
+
     data_config = config.get("data", {})
     embedder_config = config.get("embedder", {})
 

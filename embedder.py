@@ -5,10 +5,10 @@ from config.load_config import load_config
 class Embedder:
     def __init__(self, config = load_config().get('embedder')):
         self.config = config
-        self._model = self._load_model(config.get('model_name'))
+        self._model = self._load_model(config.get('model_name'), config.get('model_cache_path'))
 
     @staticmethod
-    def _load_model(model_name: str):
+    def _load_model(model_name: str, model_cache_path: str):
         try:
             from sentence_transformers import SentenceTransformer
         except ImportError as exc:  # pragma: no cover
@@ -16,7 +16,7 @@ class Embedder:
                 "sentence-transformers is required. Install it with: pip install sentence-transformers"
             ) from exc
 
-        return SentenceTransformer(model_name)
+        return SentenceTransformer(model_name, cache_folder=model_cache_path)
 
     def embed_text(self, text: str) -> List[float]:
         """Return a single embedding as a plain Python list of floats."""
