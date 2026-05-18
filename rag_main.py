@@ -1,3 +1,5 @@
+from pydoc import doc
+
 from utils.debug_logger import DebugLogger
 from utils.text_splitter import TextSplitter
 from utils.common import load_documents
@@ -7,7 +9,7 @@ from vector_store import VectorStore
 from retriever import Retriever
 
 class RAG:
-    def __init__(self, model: str = OllamaModel.CODE_GEMMA.value, k_best:int= 2, debug: bool = False):
+    def __init__(self, model: str = OllamaModel.LLAMA3.value, k_best:int= 2, debug: bool = False):
         self.embedder = Embedder()
         self.store = VectorStore()
         self.splitter = TextSplitter(chunk_size=25, overlap=5)
@@ -24,7 +26,7 @@ class RAG:
 
         self.debug.log("SPLIT", "Splitting documents into chunks...")
         chunked_docs = self.splitter.split_documents(docs)
-        print(chunked_docs)
+        #print(chunked_docs)
         self.debug.log("SPLIT", f"Created {len(chunked_docs)} chunks")
 
         self.debug.log("EMBED", "Processing chunks and creating embeddings...")
@@ -64,6 +66,11 @@ class RAG:
             """
 
             self.debug.log("LLM", f"Sending prompt to LLM... \n{prompt}...")
+            print("\n🎬 Películas encontradas:")
+            for score, doc in context_docs:
+                first_line = doc.split("\n")[0]
+                print(f"- {first_line} | Score: {score:.3f}")
+
             return self.llm.ask(prompt)
         except Exception as e:
             return f"Error processing query: {str(e)}"
