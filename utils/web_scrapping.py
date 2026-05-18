@@ -145,22 +145,22 @@ def scrape_listing_pages(config=None):
 	return all_links
 
 def scrape_all_movies_parallel(config, max_workers=6):
-    links = scrape_listing_pages(config)
-    print(f"Links únicos encontrados: {len(links)}")
-    database = DatabaseManager(config.get('database_name', 'movies.db'))
-    database.create_tables()
-    filtered_links = [
-        (title, url)
-        for title, url in links
-        if not database.movie_exists(url)
-    ]
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        future_map = { executor.submit(extract_movie_data, url, title): (title, url) for title, url in filtered_links }
-        for future in as_completed(future_map):
-            title, url = future_map[future]
-            try:
-                row = future.result()
-                database.insert_movie(row['name'], row['description'], row['url'], row['transcript'])
-                print(f"OK: {row['name']}")
-            except Exception as e:
-                print(f"ERROR: {title} | {url} | {e}")
+	links = scrape_listing_pages(config)
+	print(f"Links únicos encontrados: {len(links)}")
+	database = DatabaseManager(config.get('database_name', 'movies.db'))
+	database.create_tables()
+	filtered_links = [
+		(title, url)
+		for title, url in links
+		if not database.movie_exists(url)
+	]
+	with ThreadPoolExecutor(max_workers=max_workers) as executor:
+		future_map = { executor.submit(extract_movie_data, url, title): (title, url) for title, url in filtered_links }
+		for future in as_completed(future_map):
+			title, url = future_map[future]
+			try:
+				row = future.result()
+				database.insert_movie(row['name'].replace(' - full transcript', ' '), row['description'], row['url'], row['transcript'])
+				print(f"OK: {row['name']}")
+			except Exception as e:
+				print(f"ERROR: {title} | {url} | {e}")
