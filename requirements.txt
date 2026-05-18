@@ -1,4 +1,5 @@
 kagglehub
 requests
 BeautifulSoup4
+httpx
 sentence-transformers

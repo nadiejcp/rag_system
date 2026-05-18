@@ -2,13 +2,13 @@ from utils.debug_logger import DebugLogger
 from utils.text_splitter import TextSplitter
 from utils.common import load_documents
 from llm_client import LLMClient, OllamaModel
-from embedder import SimpleEmbedder
+from embedder import Embedder
 from vector_store import VectorStore
 from retriever import Retriever
 
 class RAG:
     def __init__(self, model: str = OllamaModel.CODE_GEMMA.value, k_best:int= 2, debug: bool = False):
-        self.embedder = SimpleEmbedder()
+        self.embedder = Embedder()
         self.store = VectorStore()
         self.splitter = TextSplitter(chunk_size=25, overlap=5)
         self.retriever = None
@@ -29,7 +29,7 @@ class RAG:
 
         self.debug.log("EMBED", "Processing chunks and creating embeddings...")
         for doc_id, text in chunked_docs.items():
-            vec = self.embedder.embed(text)
+            vec = self.embedder.embed_text(text)
             self.store.add(doc_id, text, vec)
             self.debug.log("EMBED", f"Processed chunk: {doc_id[:30]}...")
 
@@ -47,18 +47,21 @@ class RAG:
             self.debug.log("RETRIEVE", "Context documents:", context_docs)
             context_text = "\n---\n".join([doc for _, doc in context_docs])
 
-            prompt = f"""Responde a la siguiente pregunta basándote únicamente en el contexto proporcionado. Si no 
-            encuentras la respuesta en el contexto, indica "No puedo responder basándome en el contexto proporcionado."
+            prompt = f"""
+                Eres un asistente experto en películas.
 
-                ### Contexto:
-                inicio: (
+                Responde usando únicamente el contexto recuperado desde la base de datos de películas.
+                Si la respuesta no está en el contexto, responde:
+                "No puedo responder basándome en la base de datos disponible."
+
+                ### Contexto recuperado:
                 {context_text}
-                ) fin
-                
-                ### Pregunta:
+
+                ### Pregunta del usuario:
                 {question}
 
-                ### Respuesta:"""
+            ### Respuesta:
+            """
 
             self.debug.log("LLM", f"Sending prompt to LLM... \n{prompt}...")
             return self.llm.ask(prompt)
@@ -95,5 +98,5 @@ def run_agent(model_choice: OllamaModel = None, k_best: int=2, debug: bool = Fal
             print(f"\n❌ Error: {str(e)}")
 
 
-if __name__ == "__main__":
-    run_agent(OllamaModel.CODE_GEMMA,  1, True)
+#if __name__ == "__main__":
+#    run_agent(OllamaModel.CODE_GEMMA,  3, True)

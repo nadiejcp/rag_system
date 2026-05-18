@@ -1,25 +1,33 @@
-import os
+import sqlite3
 
 
-def load_documents(path="documents"):
+def load_documents(db_path="data/movies.db"):
     docs = {}
+
     try:
-        if not os.path.exists(path):
-            raise FileNotFoundError(f"Documents directory '{path}' not found")
+        conn = sqlite3.connect(db_path)
+        cur = conn.cursor()
 
-        for fname in os.listdir(path):
-            if fname.endswith(".txt"):
-                try:
-                    with open(os.path.join(path, fname), "r", encoding="utf-8") as f:
-                        content = f.read().strip()
-                        if content:
-                            docs[fname] = content
-                except Exception as e:
-                    print(f"Error reading {fname}: {str(e)}")
+        cur.execute("""
+            SELECT id, name, description
+            FROM movies
+            WHERE name IS NOT NULL
+        """)
 
-        if not docs:
-            raise ValueError("No valid documents found")
+        rows = cur.fetchall()
+
+        for movie_id, name, description in rows:
+            text = f"""
+Movie: {name}
+Description: {description or ""}
+"""
+            docs[str(movie_id)] = text.strip()
+
+        conn.close()
+
+        print(f"Películas cargadas desde movies.db: {len(docs)}")
         return docs
+
     except Exception as e:
-        print(f"Error loading documents: {str(e)}")
+        print(f"Error loading movies.db: {e}")
         return {}

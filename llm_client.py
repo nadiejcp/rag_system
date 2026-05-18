@@ -10,10 +10,11 @@ class OllamaModel(Enum):
     GPT35 = "Eomer/gpt-3.5-turbo"
     CODE_GEMMA = "codegemma"
     DEEPSEEK = "deepseek-coder:6.7b"
+    LLAMA3 = "llama3"
 
 
 class LLMClient:
-    def __init__(self, model: str = OllamaModel.CODE_GEMMA.value):
+    def __init__(self, model: str = OllamaModel.LLAMA3.value):
         self.model = model
         self.url = "http://localhost:11434/api/chat"
 

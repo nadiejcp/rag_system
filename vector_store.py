@@ -123,3 +123,13 @@ def build_embeddings(config = None) -> None:
         model_name=model_name,
     )
     print(f"Embeddings stored for {processed} movies in '{target_table}'.")
+
+class VectorStore:
+    def __init__(self):
+        self.entries = []
+
+    def add(self, doc_id: str, text: str, embedding: list):
+        self.entries.append((doc_id, text, embedding))
+
+    def get_all(self):
+        return self.entries
