@@ -1,7 +1,7 @@
 import yaml
 from pathlib import Path
 
-def load_config(path: str | Path) -> dict:
+def load_config(path: str | Path = "config/config.yaml") -> dict:
   path = Path(path)
 
   if not path.exists():

@@ -1,1 +1,0 @@
-Python es un lenguaje de programación interpretado de alto nivel.
