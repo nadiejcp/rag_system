@@ -1,3 +1,4 @@
 kagglehub
 requests
 BeautifulSoup4
+sentence-transformers
