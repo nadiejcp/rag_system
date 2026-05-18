@@ -138,6 +138,13 @@ def scrape_listing_pages(config=None):
 def scrape_all_movies_parallel(config, max_workers=6):
 	links = scrape_listing_pages(config)
 	print(f"Links únicos encontrados: {len(links)}")
+	print('Adding extra links')
+	links.append(('Batman Beyond: Return of the Joker (2000)', 'https://subslikescript.com/movie/Batman_Beyond_Return_of_the_Joker-233298'))
+	links.append(('Titanic (1997)', 'https://subslikescript.com/movie/Titanic-120338'))
+	links.append(('The Godfather (2022)', 'https://subslikescript.com/movie/Godfather-13130308'))
+	links.append(('Shrek (2001)', 'https://subslikescript.com/movie/Shrek-126029'))
+	links.append(('Star Wars: Revelations (2005)', 'https://subslikescript.com/movie/Star_Wars_Revelations-457489'))
+	links.append(('King Kong (1933)', 'https://subslikescript.com/movie/King_Kong-24216'))
 	database = DatabaseManager(config.get('database_name', 'movies.db'))
 	database.create_tables()
 	filtered_links = [
