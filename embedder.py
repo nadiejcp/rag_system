@@ -1,7 +1,4 @@
-<<<<<<< Updated upstream
 from pathlib import Path
-=======
->>>>>>> Stashed changes
 import math
 from typing import List, Sequence
 

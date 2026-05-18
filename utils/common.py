@@ -1,11 +1,7 @@
 import sqlite3
 
 
-<<<<<<< Updated upstream
 def load_documents(db_path="data/movies.db"):
-=======
-def load_documents(db_path="data/raw/movies.db"):
->>>>>>> Stashed changes
     docs = {}
 
     try:
