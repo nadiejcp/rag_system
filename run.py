@@ -22,7 +22,7 @@ def main():
 
   print('Fin del programa')
   print('Iniciando sistema RAG...')
-  run_agent(OllamaModel.LLAMA3, k_best=3, debug=True)
+  run_agent(OllamaModel.LLAMA3, k_best=3, debug=False)
 
 if __name__ == "__main__":
     main()
