@@ -22,7 +22,7 @@ def ensure_embeddings_table(
             Table_id INTEGER PRIMARY KEY AUTOINCREMENT,
             Movie_id INTEGER NOT NULL UNIQUE,
             Embedding TEXT NOT NULL,
-            FOREIGN KEY(Movie_id) REFERENCES {source_table}(Movie_id)
+            FOREIGN KEY(Movie_id) REFERENCES {source_table}(id)
         )
         """
     )
@@ -31,9 +31,9 @@ def ensure_embeddings_table(
 def fetch_movies(conn: sqlite3.Connection, table_name: str) -> List[sqlite3.Row]:
     cursor = conn.execute(
         f"""
-        SELECT Movie_id, Movie_name, Description
+        SELECT id, name, description
         FROM {table_name}
-        ORDER BY Movie_id ASC
+        ORDER BY id ASC
         """
     )
     return cursor.fetchall()
@@ -86,8 +86,8 @@ def populate_embeddings(
 
         count = 0
         for row in movies:
-            movie_id = int(row["Movie_id"])
-            text = build_embedding_text(row["Movie_name"], row["Description"])
+            movie_id = int(row["id"])
+            text = build_embedding_text(row["name"], row["description"])
             if not text:
                 continue
 
