@@ -35,25 +35,13 @@ class DatabaseManager:
 				url TEXT UNIQUE
 			)
 		""")
-		self.cur.execute("""
-			CREATE TABLE IF NOT EXISTS movies_transcript (
-				id INTEGER PRIMARY KEY AUTOINCREMENT,
-				movie_id INTEGER,
-				transcript TEXT,
-				FOREIGN KEY(movie_id) REFERENCES movies(id)
-			)
-		""")
 		self.conn.commit()
 
-	def insert_movie(self, name, description, url, transcript):
+	def insert_movie(self, name, description, url):
+		print(f"Inserting: {name} | {url}")
 		self.cur.execute("""
 			INSERT OR IGNORE INTO movies (name, description, url) VALUES (?, ?, ?)
 		""", (name, description, url))
-		movie_id = self.cur.lastrowid
-		if movie_id:
-			self.cur.execute("""
-				INSERT INTO movies_transcript (movie_id, transcript) VALUES (?, ?)
-			""", (movie_id, transcript))
 		self.conn.commit()
 
 	def movie_exists(self, url):
@@ -133,9 +121,9 @@ def scrape_listing_pages(config=None):
 
 	page_url = config.get('url_to_scrap')
 	start_page = config.get('start_page', 1)
-	end_page = config.get('end_page', None)
+	end_page = config.get('end_page', 5)
 	for page_num in range(start_page, end_page + 1):
-		print(f"Listado {page_num}: {page_url}")
+		print(f"Obtener enlaces de: {page_url}?page={page_num}")
 		soup = get_soup(f'{page_url}?page={page_num}')
 		movie_links = extract_movie_links(page_url, soup)
 		for title, url in movie_links:
@@ -160,7 +148,7 @@ def scrape_all_movies_parallel(config, max_workers=6):
 			title, url = future_map[future]
 			try:
 				row = future.result()
-				database.insert_movie(row['name'].replace(' - full transcript', ' '), row['description'], row['url'], row['transcript'])
+				database.insert_movie(row['name'].replace(' - full transcript', ''), row['description'], row['url'])
 				print(f"OK: {row['name']}")
 			except Exception as e:
 				print(f"ERROR: {title} | {url} | {e}")
