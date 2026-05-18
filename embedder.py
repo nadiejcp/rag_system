@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import List, Sequence
 
 from config.load_config import load_config
@@ -15,7 +16,8 @@ class Embedder:
             raise ImportError(
                 "sentence-transformers is required. Install it with: pip install sentence-transformers"
             ) from exc
-
+        db_path = Path(model_cache_path)
+        db_path.parent.mkdir(parents=True, exist_ok=True)
         return SentenceTransformer(model_name, cache_folder=model_cache_path)
 
     def embed_text(self, text: str) -> List[float]:
