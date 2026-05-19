@@ -17,7 +17,6 @@ def main():
     print('Generando embeddings y almacenando en la base de datos vectorial...')
     build_embeddings(config)
 
-  print('Iniciando sistema RAG...')
   run_agent(config, OllamaModel.LLAMA3, k_best=3, debug=False)
   print('Proceso completado.')
 

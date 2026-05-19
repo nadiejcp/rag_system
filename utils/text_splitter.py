@@ -20,7 +20,7 @@ class TextSplitter:
     def split_documents(self, documents: dict) -> dict:
         """Split multiple documents into chunks."""
         chunked_docs = {}
-        for doc_id, text in documents.items():
+        for doc_id, (text, _) in documents.items():
             chunks = self.split_text(text)
             for i, chunk in enumerate(chunks):
                 chunk_id = f"{doc_id}_chunk_{i}"

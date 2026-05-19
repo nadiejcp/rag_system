@@ -2,15 +2,13 @@ from pydoc import doc
 
 from utils.debug_logger import DebugLogger
 from utils.text_splitter import TextSplitter
-from utils.common import load_documents
+from utils.common import load_vectors
 from llm_client import LLMClient, OllamaModel
-from embedder import Embedder
 from vector_store import VectorStore
 from retriever import Retriever
 
 class RAG:
     def __init__(self, config, model: str = OllamaModel.LLAMA3.value, k_best:int= 2, debug: bool = False):
-        self.embedder = Embedder()
         self.store = VectorStore()
         self.splitter = TextSplitter(chunk_size=25, overlap=5)
         self.retriever = None
@@ -22,22 +20,20 @@ class RAG:
 
 
     def initialize(self):
-        self.debug.log("INIT", "Loading documents...")
-        docs = load_documents(self.config.get('data').get('database_name'))
+        self.debug.log("INIT", "Cargando vectores...")
+        docs = load_vectors(self.config.get('data').get('database_name'))
 
-        self.debug.log("SPLIT", "Splitting documents into chunks...")
-        chunked_docs = self.splitter.split_documents(docs)
-        #print(chunked_docs)
-        self.debug.log("SPLIT", f"Created {len(chunked_docs)} chunks")
+        #self.debug.log("SPLIT", "Dividiendo documentos en fragmentos...")
+        #chunked_docs = self.splitter.split_documents(docs)
+        #self.debug.log("SPLIT", f"{len(chunked_docs)} fragmentos creados a partir de {len(docs)} documentos")
 
-        self.debug.log("EMBED", "Processing chunks and creating embeddings...")
-        for doc_id, text in chunked_docs.items():
-            vec = self.embedder.embed_text(text)
-            self.store.add(doc_id, text, vec)
-            self.debug.log("EMBED", f"Processed chunk: {doc_id[:30]}...")
+        self.debug.log("EMBED", "Procesando fragmentos y creando embeddings...")
+        for doc_id, (text, embedding) in docs.items():
+            self.store.add(doc_id, text, embedding)
+            self.debug.log("EMBED", f"Fragmento procesado: {doc_id[:30]}...")
 
-        self.retriever = Retriever(self.store, self.embedder, self.k_best)
-        self.debug.log("INIT", "RAG system initialization complete")
+        self.retriever = Retriever(self.store, self.k_best)
+        self.debug.log("INIT", "Inicialización del sistema RAG completada.")
 
     def query(self, question: str) -> str:
         if not question.strip():
@@ -80,13 +76,13 @@ class RAG:
 
 
 def run_agent(config, model_choice: OllamaModel = None, k_best: int=2, debug: bool = False):
-    print("🚀 Initializing RAG system...")
+    print("🚀 Iniciando sistema RAG...")
     if model_choice:
         rag = RAG(config=config, model=model_choice.value, k_best=k_best, debug=debug)
     else:
         rag = RAG(config=config)
 
-    print("✅ RAG system ready!")
+    print("✅ Sistema RAG listo!")
 
     while True:
         try:

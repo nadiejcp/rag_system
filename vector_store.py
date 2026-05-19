@@ -1,9 +1,8 @@
-import json
 import sqlite3
 from pathlib import Path
 from typing import List, Sequence
+import numpy as np
 
-from config.load_config import load_config
 from embedder import create_embedder
 
 def connect_db(db_path: str | Path) -> sqlite3.Connection:
@@ -16,13 +15,15 @@ def ensure_embeddings_table(
     table_name: str,
     source_table: str,
 ) -> None:
+    conn.execute(f"DROP TABLE IF EXISTS {table_name};")
+    conn.commit()
     conn.execute(
         f"""
-        CREATE TABLE IF NOT EXISTS {table_name} (
-            Table_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            Movie_id INTEGER NOT NULL UNIQUE,
-            Embedding TEXT NOT NULL,
-            FOREIGN KEY(Movie_id) REFERENCES {source_table}(id)
+        CREATE TABLE {table_name} (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            movie_id INTEGER NOT NULL,
+            embedding BLOB NOT NULL,
+            FOREIGN KEY(movie_id) REFERENCES {source_table}(id)
         )
         """
     )
@@ -45,21 +46,21 @@ def build_embedding_text(movie_name: str, description: str | None) -> str:
         return f"Movie: {movie_name}.\n Description: {description}"
     return movie_name or description
 
-def serialize_embedding(embedding: Sequence[float]) -> str:
-    return json.dumps([float(x) for x in embedding], ensure_ascii=False)
+def serialize_embedding(embedding):
+    if isinstance(embedding, list):
+        embedding = np.array(embedding, dtype=np.float32)
+    return embedding.astype(np.float32).tobytes()
 
 def upsert_embedding(
     conn: sqlite3.Connection,
     movie_id: int,
-    embedding: Sequence[float],
+    embedding: List[float],
     table_name: str,
 ) -> None:
     conn.execute(
         f"""
-        INSERT INTO {table_name} (Movie_id, Embedding)
+        INSERT INTO {table_name} (movie_id, embedding)
         VALUES (?, ?)
-        ON CONFLICT(Movie_id) DO UPDATE SET
-            Embedding = excluded.Embedding
         """,
         (movie_id, serialize_embedding(embedding)),
     )
@@ -101,10 +102,7 @@ def populate_embeddings(
         return count
 
 
-def build_embeddings(config = None) -> None:
-    if config is None:
-        config = load_config()
-
+def build_embeddings(config) -> None:
     data_config = config.get("data", {})
     embedder_config = config.get("embedder", {})
 
