@@ -91,6 +91,13 @@ def rag_global_score(acc1, recall3, mrr, faithfulness, answer_relevancy):
 
 # --- Ejecución de pruebas ---
 def main():
+    print("\n[¿Por qué se evalúa cada métrica?]")
+    print("Accuracy@1:     Mide si la película correcta es la primera recuperada. Es clave porque el usuario espera una respuesta directa y precisa.")
+    print("Recall@3:       Evalúa si la película correcta está entre las 3 mejores recuperadas. Es importante porque el sistema RAG puede pasar varias opciones al LLM y aún así dar una buena respuesta.")
+    print("MRR:            Indica en qué posición aparece la película correcta. Un MRR alto significa que el sistema ordena bien los resultados y facilita la tarea del LLM.")
+    print("Faithfulness:   Mide si la respuesta del LLM está basada en el contexto recuperado, evitando alucinaciones. Es fundamental para asegurar que el sistema no invente información.")
+    print("AnswerRelevancy:Verifica si la respuesta del LLM realmente contesta la pregunta del usuario. Es esencial para la utilidad práctica del sistema.")
+    print("\nEn este proyecto, las métricas de retrieval (Accuracy@1, Recall@3, MRR) muestran la calidad de la búsqueda semántica, mientras que las de generación (Faithfulness, AnswerRelevancy) reflejan la calidad de la respuesta final generada por el LLM. El RAG Global Score combina ambas dimensiones para evaluar el desempeño integral del sistema.")
     print("Cargando casos de prueba...")
     test_cases = load_test_cases()
     rag = RAG(k_best=K)
