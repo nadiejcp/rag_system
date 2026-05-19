@@ -13,6 +13,7 @@ Conexión directa al sistema RAG existente (rag_main.py, llm_client.py, etc).
 """
 import sqlite3
 from rag_main import RAG
+from config.load_config import load_config
 
 # --- Configuración ---
 QUERIES_DB = "data/queries.db"
@@ -100,7 +101,8 @@ def main():
     print("\nEn este proyecto, las métricas de retrieval (Accuracy@1, Recall@3, MRR) muestran la calidad de la búsqueda semántica, mientras que las de generación (Faithfulness, AnswerRelevancy) reflejan la calidad de la respuesta final generada por el LLM. El RAG Global Score combina ambas dimensiones para evaluar el desempeño integral del sistema.")
     print("Cargando casos de prueba...")
     test_cases = load_test_cases()
-    rag = RAG(k_best=K)
+    config = load_config()
+    rag = RAG(config=config, k_best=K)
     results = []
     for case in test_cases:
         query = case["query"]
