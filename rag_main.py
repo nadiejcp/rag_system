@@ -47,8 +47,9 @@ class RAG:
             context_text = "\n---\n".join([doc for _, doc in context_docs])
 
             prompt = f"""
-                You are a movie expert assistant. Answer the user's question based on the retrieved movie database context.
-
+                You are a movie expert assistant.
+                There are {len(context_docs)} relevant documents in the movie database that may contain the answer to the user's question.
+                Answer the user's question based on the retrieved movie database context.
                 Respond using only the context retrieved from the movie database.
                 Do not use any external knowledge or assumptions.
                 Avoid making up information and do not give questions back to the user.
