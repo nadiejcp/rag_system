@@ -66,7 +66,7 @@ def embed_texts(texts: Sequence[str], model_name: str = "sentence-transformers/a
     return create_embedder(model_name).embed_texts(texts)
 
 def cosine(v1, v2):
-        dot = sum(a * b for a, b in zip(v1, v2))
-        n1 = math.sqrt(sum(a * a for a in v1))
-        n2 = math.sqrt(sum(b * b for b in v2))
-        return dot / (n1 * n2) if n1 and n2 else 0.0
+    dot = sum(a * b for a, b in zip(v1, v2))
+    n1 = math.sqrt(sum(a * a for a in v1))
+    n2 = math.sqrt(sum(b * b for b in v2))
+    return dot / (n1 * n2) if n1 and n2 else 0.0

@@ -1,16 +1,16 @@
 from embedder import Embedder, cosine
 
 class Retriever:
-    def __init__(self, store, embedder: Embedder, k=2):
+    def __init__(self, store, k=2):
+        self.embedder = Embedder()
         self.store = store
-        self.embedder = embedder
         self.k = k
 
     def retrieve(self, query: str):
         query_vec = self.embedder.embed_text(query)
         scored = []
 
-        for doc_id, text, vector in self.store.get_all():
+        for _, text, vector in self.store.get_all():
             score = cosine(query_vec, vector)
             scored.append((score, text))
 

@@ -57,17 +57,3 @@ class LLMClient:
         """List all available model names"""
         return [model.value for model in OllamaModel]
 
-
-def test_llm():
-    """Test function for the LLM client"""
-    client = LLMClient()
-
-    print("Available models:", LLMClient.list_models())
-    print("\nTesting LLM with a simple prompt...")
-
-    response = client.ask("What is Python?")
-    print(f"\nResponse:\n{response}")
-
-
-if __name__ == "__main__":
-    test_llm()
