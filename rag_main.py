@@ -103,7 +103,3 @@ def run_agent(config, model_choice: OllamaModel = None, k_best: int=2, debug: bo
             break
         except Exception as e:
             print(f"\n❌ Error: {str(e)}")
-
-
-#if __name__ == "__main__":
-#    run_agent(OllamaModel.CODE_GEMMA,  3, True)
