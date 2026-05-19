@@ -8,7 +8,7 @@ data:
   url_to_scrap: https://subslikescript.com/movies
   start_page: 1
   end_page: 4
-  database_name: data/raw/movies.db
+  database_name: data/movies.db
   raw_table_name: movies
   embeddings_table_name: movies_embeddings
 

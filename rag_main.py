@@ -9,7 +9,7 @@ from vector_store import VectorStore
 from retriever import Retriever
 
 class RAG:
-    def __init__(self, model: str = OllamaModel.LLAMA3.value, k_best:int= 2, debug: bool = False):
+    def __init__(self, config, model: str = OllamaModel.LLAMA3.value, k_best:int= 2, debug: bool = False):
         self.embedder = Embedder()
         self.store = VectorStore()
         self.splitter = TextSplitter(chunk_size=25, overlap=5)
@@ -17,12 +17,13 @@ class RAG:
         self.llm = LLMClient(model=model)
         self.debug = DebugLogger(enabled=debug)
         self.k_best = k_best
+        self.config = config
         self.initialize()
 
 
     def initialize(self):
         self.debug.log("INIT", "Loading documents...")
-        docs = load_documents()
+        docs = load_documents(self.config.get('data').get('database_name'))
 
         self.debug.log("SPLIT", "Splitting documents into chunks...")
         chunked_docs = self.splitter.split_documents(docs)
@@ -50,19 +51,21 @@ class RAG:
             context_text = "\n---\n".join([doc for _, doc in context_docs])
 
             prompt = f"""
-                Eres un asistente experto en películas.
+                You are a movie expert assistant. Answer the user's question based on the retrieved movie database context.
 
-                Responde usando únicamente el contexto recuperado desde la base de datos de películas.
-                Si la respuesta no está en el contexto, responde:
-                "No puedo responder basándome en la base de datos disponible."
+                Respond using only the context retrieved from the movie database.
+                Do not use any external knowledge or assumptions.
+                Avoid making up information and do not give questions back to the user.
+                If the answer is not explicitly found in the context, respond with:
+                "I cannot answer based on the available database."
 
-                ### Contexto recuperado:
+                ### Retrieved Context:
                 {context_text}
 
-                ### Pregunta del usuario:
+                ### User Question:
                 {question}
 
-            ### Respuesta:
+            ### Answer:
             """
 
             self.debug.log("LLM", f"Sending prompt to LLM... \n{prompt}...")
@@ -76,12 +79,12 @@ class RAG:
             return f"Error processing query: {str(e)}"
 
 
-def run_agent(model_choice: OllamaModel = None, k_best: int=2, debug: bool = False):
+def run_agent(config, model_choice: OllamaModel = None, k_best: int=2, debug: bool = False):
     print("🚀 Initializing RAG system...")
     if model_choice:
-        rag = RAG(model=model_choice.value, k_best=k_best, debug=debug)
+        rag = RAG(config=config, model=model_choice.value, k_best=k_best, debug=debug)
     else:
-        rag = RAG()
+        rag = RAG(config=config)
 
     print("✅ RAG system ready!")
 

@@ -8,7 +8,6 @@ from llm_client import OllamaModel
 def main():
   print('Downloading files...')
   config = load_config()
-  #download_dataset(config.get('data'))
 
   if input('¿Deseas construir la base de datos raw? (s/n): ').lower() == 's':
     print('Iniciando web scrapping y almacenando datos raw...')
@@ -17,12 +16,10 @@ def main():
   if input('¿Deseas construir la base de datos vectorial? (s/n): ').lower() == 's':
     print('Generando embeddings y almacenando en la base de datos vectorial...')
     build_embeddings(config)
-  
- 
 
-  print('Fin del programa')
   print('Iniciando sistema RAG...')
-  run_agent(OllamaModel.LLAMA3, k_best=3, debug=False)
+  run_agent(config, OllamaModel.LLAMA3, k_best=3, debug=False)
+  print('Proceso completado.')
 
 if __name__ == "__main__":
-    main()
+  main()
